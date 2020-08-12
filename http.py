@@ -7,8 +7,10 @@ import io
 import flask
 import os
 
+# resize the image
 def resize_image(image_stream, sz=(256, 256)):
     im = PIL.Image.open(image_stream)
+    # convert to RGB
     if im.mode != 'RGB':
         im = im.convert('RGB')
     imr = im.resize(sz, resample=PIL.Image.BILINEAR)
@@ -17,6 +19,7 @@ def resize_image(image_stream, sz=(256, 256)):
     imrh.seek(0)
     return imrh
 
+# NSFW score of the image stream
 def score_image(image_stream, net=None, transformer=None):
     if net is None:
         return []
@@ -26,6 +29,7 @@ def score_image(image_stream, net=None, transformer=None):
     img_data_rs = resize_image(image_stream, sz=(256, 256))
     image = caffe.io.load_image(img_data_rs)
 
+    # transform image
     H, W, _ = image.shape
     _, _, h, w = net.blobs['data'].data.shape
     h_off = max((H - h) / 2, 0)
@@ -42,12 +46,17 @@ def score_image(image_stream, net=None, transformer=None):
 
 def make_transformer(net):
     transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
-    transformer.set_transpose('data', (2, 0, 1))                # move image channels to outermost
-    transformer.set_mean('data', numpy.array([104, 117, 123]))  # subtract the dataset-mean value in each channel
-    transformer.set_raw_scale('data', 255)                      # rescale from [0, 1] to [0, 255]
-    transformer.set_channel_swap('data', (2, 1, 0))             # swap channels from RGB to BGR
+    # move image channels to outermost
+    transformer.set_transpose('data', (2, 0, 1))
+    # subtract the dataset-mean value in each channel
+    transformer.set_mean('data', numpy.array([104, 117, 123]))
+    # rescale from [0, 1] to [0, 255]
+    transformer.set_raw_scale('data', 255)
+    # swap channels from RGB to BGR
+    transformer.set_channel_swap('data', (2, 1, 0))
     return transformer
 
+# Create Flask app
 def make_app(net, transformer):
     app = flask.Flask(__name__)
 
